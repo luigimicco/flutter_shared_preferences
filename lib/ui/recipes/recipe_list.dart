@@ -1,7 +1,9 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-// TODO: Add imports
+import 'package:shared_preferences/shared_preferences.dart';
+import '../widgets/custom_dropdown.dart';
+import '../colors.dart';
 
 class RecipeList extends StatefulWidget {
   const RecipeList({Key? key}) : super(key: key);
@@ -11,7 +13,9 @@ class RecipeList extends StatefulWidget {
 }
 
 class _RecipeListState extends State<RecipeList> {
-  // TODO: Add key
+  // key per shred preferences
+  static const String prefSearchKey = 'previousSearches';
+
   late TextEditingController searchTextController;
   final ScrollController _scrollController = ScrollController();
   List currentSearchList = [];
@@ -22,12 +26,14 @@ class _RecipeListState extends State<RecipeList> {
   bool hasMore = false;
   bool loading = false;
   bool inErrorState = false;
-  // TODO: Add searches array
+  // searches array
+  List<String> previousSerches = <String>[];
 
   @override
   void initState() {
     super.initState();
-    // TODO: Call getPreviousSearches
+
+    getPreviousSearches();
     searchTextController = TextEditingController(text: '');
     _scrollController
       ..addListener(() {
@@ -56,7 +62,22 @@ class _RecipeListState extends State<RecipeList> {
     super.dispose();
   }
 
-  // TODO: Add savePreviousSearches
+  void savePreviousSearches() async {
+    final prefs = await SharedPreferences.getInstance();
+    prefs.setStringList(prefSearchKey, previousSerches);
+  }
+
+  void getPreviousSearches() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.containsKey(prefSearchKey)) {
+      final searches = prefs.getStringList(prefSearchKey);
+      if (searches != null) {
+        previousSerches = searches;
+      } else {
+        previousSerches = <String>[];
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -83,46 +104,84 @@ class _RecipeListState extends State<RecipeList> {
         padding: const EdgeInsets.all(4.0),
         child: Row(
           children: [
-            // Replace
-            const Icon(Icons.search),
+            IconButton(
+                onPressed: () {
+                  startSearch(searchTextController.text);
+                  final currentFocus = FocusScope.of(context);
+                  if (!currentFocus.hasPrimaryFocus) {
+                    currentFocus.unfocus();
+                  }
+                },
+                icon: const Icon(Icons.search)),
             const SizedBox(
               width: 6.0,
             ),
-            // *** Start Replace
             Expanded(
               child: Row(
                 children: <Widget>[
                   Expanded(
-                    child: TextField(
-                      decoration: const InputDecoration(
-                          border: InputBorder.none, hintText: 'Search'),
-                      autofocus: false,
-                      controller: searchTextController,
-                      onChanged: (query) => {
-                        if (query.length >= 3) {
-                            // Rebuild list
-                            setState(() {
-                                currentSearchList.clear();
-                                currentCount = 0;
-                                currentEndPosition = pageCount;
-                                currentStartPosition = 0;
-                              },
-                            )
-                          }
-                      },
+                      child: TextField(
+                    decoration: const InputDecoration(
+                        border: InputBorder.none, hintText: 'Search'),
+                    autofocus: false,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (value) {
+                      if (!previousSerches.contains(value)) {
+                        previousSerches.add(value);
+                        savePreviousSearches();
+                      }
+                    },
+                    controller: searchTextController,
+                  )),
+                  PopupMenuButton<String>(
+                    icon: const Icon(
+                      Icons.arrow_drop_down,
+                      color: lightGrey,
                     ),
+                    onSelected: (String value) {
+                      searchTextController.text = value;
+                      startSearch(searchTextController.text);
+                    },
+                    itemBuilder: (BuildContext context) {
+                      return previousSerches
+                          .map<CustomDropdownMenuItem<String>>((String value) {
+                        return CustomDropdownMenuItem<String>(
+                          text: value,
+                          value: value,
+                          callback: () {
+                            setState(() {
+                              previousSerches.remove(value);
+                              Navigator.pop(context);
+                            });
+                          },
+                        );
+                      }).toList();
+                    },
                   ),
                 ],
               ),
             ),
-            // *** End Replace
           ],
         ),
       ),
     );
   }
 
-  // TODO: Add startSearch
+  void startSearch(String value) {
+    setState(() {
+      currentSearchList.clear();
+      currentCount = 0;
+      currentEndPosition = pageCount;
+      currentStartPosition = 0;
+      hasMore = true;
+      value = value.trim();
+
+      if (!previousSerches.contains(value)) {
+        previousSerches.add(value);
+        savePreviousSearches();
+      }
+    });
+  }
 
   Widget _buildRecipeLoader(BuildContext context) {
     if (searchTextController.text.length < 3) {
