@@ -27,7 +27,7 @@ class _RecipeListState extends State<RecipeList> {
   bool loading = false;
   bool inErrorState = false;
   // searches array
-  List<String> previousSerches = <String>[];
+  List<String> previousSearches = <String>[];
 
   @override
   void initState() {
@@ -64,7 +64,7 @@ class _RecipeListState extends State<RecipeList> {
 
   void savePreviousSearches() async {
     final prefs = await SharedPreferences.getInstance();
-    prefs.setStringList(prefSearchKey, previousSerches);
+    prefs.setStringList(prefSearchKey, previousSearches);
   }
 
   void getPreviousSearches() async {
@@ -72,9 +72,9 @@ class _RecipeListState extends State<RecipeList> {
     if (prefs.containsKey(prefSearchKey)) {
       final searches = prefs.getStringList(prefSearchKey);
       if (searches != null) {
-        previousSerches = searches;
+        previousSearches = searches;
       } else {
-        previousSerches = <String>[];
+        previousSearches = <String>[];
       }
     }
   }
@@ -126,8 +126,8 @@ class _RecipeListState extends State<RecipeList> {
                     autofocus: false,
                     textInputAction: TextInputAction.done,
                     onSubmitted: (value) {
-                      if (!previousSerches.contains(value)) {
-                        previousSerches.add(value);
+                      if (!previousSearches.contains(value)) {
+                        previousSearches.add(value);
                         savePreviousSearches();
                       }
                     },
@@ -143,14 +143,14 @@ class _RecipeListState extends State<RecipeList> {
                       startSearch(searchTextController.text);
                     },
                     itemBuilder: (BuildContext context) {
-                      return previousSerches
+                      return previousSearches
                           .map<CustomDropdownMenuItem<String>>((String value) {
                         return CustomDropdownMenuItem<String>(
                           text: value,
                           value: value,
                           callback: () {
                             setState(() {
-                              previousSerches.remove(value);
+                              previousSearches.remove(value);
                               Navigator.pop(context);
                             });
                           },
@@ -176,8 +176,8 @@ class _RecipeListState extends State<RecipeList> {
       hasMore = true;
       value = value.trim();
 
-      if (!previousSerches.contains(value)) {
-        previousSerches.add(value);
+      if (!previousSearches.contains(value)) {
+        previousSearches.add(value);
         savePreviousSearches();
       }
     });
